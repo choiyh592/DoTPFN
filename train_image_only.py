@@ -9,7 +9,7 @@ from sklearn.metrics import (
 )
 from torch.utils.data import Dataset, DataLoader
 import copy
-from crossattentionpooler import CrossAttentionWithLearnedQueries
+from src.crossattentionpooler import CrossAttentionWithLearnedQueries
 
 # ==========================================
 # 1. Dataset & Model (Unchanged logic)
