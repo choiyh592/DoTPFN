@@ -64,7 +64,7 @@ def evaluate_model(model, dataloader, device):
         "F1": f1_score(all_labels, preds, zero_division=0)
     }
 
-def train_one_fold(train_df, val_df, label_col, embed_dim, device, model_save_dir, fold, epochs=500, patience=30):
+def train_one_fold(train_df, val_df, label_col, embed_dim, device, model_save_dir, model_save_name, fold, epochs=500, patience=30):
     print("Starting Fold..")
     train_loader = DataLoader(EmbeddingDataset(train_df, label_col), batch_size=32, shuffle=True)
     val_loader = DataLoader(EmbeddingDataset(val_df, label_col), batch_size=32, shuffle=False)
@@ -95,7 +95,7 @@ def train_one_fold(train_df, val_df, label_col, embed_dim, device, model_save_di
             if patience_counter >= patience: break
                 
     model.load_state_dict(best_weights)
-    torch.save(best_weights, f"{model_save_dir}/best_model_label_{label_col}_fold_{fold}.pt")
+    torch.save(best_weights, f"{model_save_dir}/best_model_label_{model_save_name}_fold_{fold}.pt")
     return evaluate_model(model, val_loader, device)
 
 # ==========================================
@@ -111,11 +111,17 @@ def run_cv_experiment(csv_path, labels, model_save_dir, group_col=None, embed_di
     summary_results = []
 
     for i, label in enumerate(labels):
-        print(f"\n>>> Starting 5-Fold CV for Label: {label}")
         # Clean data for this specific label
         df = full_df.dropna(subset=[label]).copy()
 
-        if condition_ons != None:
+        if condition_ons is not None:
+            model_save_name = f"{label}_cond_on_{condition_ons[i]}"
+        else:
+            model_save_name = label
+
+        print(f"\n>>> Starting 5-Fold CV for Label: {model_save_name}")
+
+        if condition_ons is not None:
             assert len(condition_ons) == len(labels), "labels and condition_ons should be of same length"
             df = df[df[condition_ons[i]].isin([cond_label])].reset_index(drop=True)
 
@@ -132,7 +138,7 @@ def run_cv_experiment(csv_path, labels, model_save_dir, group_col=None, embed_di
         fold_metrics = []
         for fold, (train_idx, val_idx) in enumerate(splits):
             train_df, val_df = df.iloc[train_idx], df.iloc[val_idx]
-            metrics = train_one_fold(train_df, val_df, label, embed_dim, device, model_save_dir, fold)
+            metrics = train_one_fold(train_df, val_df, label, embed_dim, device, model_save_dir, model_save_name, fold)
             fold_metrics.append(metrics)
             print(f"  Fold {fold+1} | AUROC: {metrics['AUROC']:.4f} | F1: {metrics['F1']:.4f}")
 
@@ -140,7 +146,7 @@ def run_cv_experiment(csv_path, labels, model_save_dir, group_col=None, embed_di
         avg_metrics = {k: np.mean([m[k] for m in fold_metrics]) for k in fold_metrics[0].keys()}
         std_metrics = {k: np.std([m[k] for m in fold_metrics]) for k in fold_metrics[0].keys()}
         
-        res = {"Label": label}
+        res = {"Label": model_save_name}
         for k in avg_metrics:
             res[f"{k}_mean"] = avg_metrics[k]
             res[f"{k}_std"] = std_metrics[k]
@@ -159,7 +165,7 @@ def run_cv_experiment(csv_path, labels, model_save_dir, group_col=None, embed_di
     return report_df
 
 if __name__ == "__main__":
-    CSV_PATH = "/home/won_ju_kim/yhchoi/PSG_260408/final_combined_data.csv"
+    CSV_PATH = "/home/yhchoi/PSG_DocParse_260501/final_combined_data_67.csv"
     
     # Define your list of labels here
     # LABELS_TO_PROCESS = [
@@ -174,7 +180,14 @@ if __name__ == "__main__":
     # ]
 
     LABELS_TO_PROCESS = [
+        "adherence_6m",
+        "adherence_1yr",
+        "adherence_4yr",
         "adherence_5yr",
+        # "adherence_1yr",
+        # "adherence_9m",
+        # "adherence_6m",
+        # "adherence_3m"
         # "adherence_5yr",
         # "adherence_5yr",
         # "adherence_4yr",
@@ -184,23 +197,25 @@ if __name__ == "__main__":
     ]
 
     # COND_ONS = [
-    #     "adherence_3m",
-    #     "adherence_6m",
-    #     "adherence_9m",
-    #     "adherence_3m",
-    #     "adherence_6m",
-    #     "adherence_9m",
+    # #     "adherence_3m",
+    # #     "adherence_6m",
+    # #     "adherence_9m",
+    # #     "adherence_3m",
+    # #     "adherence_6m",
+    # #     "adherence_9m",
+    #     "adherence_1yr",
+    #     "adherence_1yr",
+    #     "adherence_1yr",
     #     "adherence_1yr"
     # ]
-
     COND_ONS = None
     
     # If you have a patient ID column (e.g., 'PID'), put it here to keep 
     # the same patient's multiple records in the same fold.
     PATIENT_ID_COL = "ID"
 
-    MODEL_SAVE_DIR = "/home/won_ju_kim/yhchoi/PSG_260408/logs"
+    MODEL_SAVE_DIR = "/home/yhchoi/PSG_DocParse_260501/experiments_condons"
     
     df = run_cv_experiment(CSV_PATH, LABELS_TO_PROCESS, MODEL_SAVE_DIR, group_col=PATIENT_ID_COL, condition_ons=COND_ONS)
 
-    df.to_csv("/home/won_ju_kim/yhchoi/PSG_260408/logs/results.csv")
+    df.to_csv("/home/yhchoi/PSG_DocParse_260501/experiments_condons/logs/results.csv")
