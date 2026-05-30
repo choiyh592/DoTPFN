@@ -1,0 +1,86 @@
+# Config for Inference Pipeline
+model_type: "multimodal"
+device: "cuda"
+
+tabpfn:
+  version: "auto" # "auto", "tabpfn_extensions", "tabpfn", "tabpfn_v1"
+  n_estimators: 1
+
+data:
+  support_csv_path: "/path/to/support_data.csv"
+  query_csv_path: "/path/to/new_patients.csv"
+  patient_id_col: "ID"
+  target_label: "adherence_1yr"
+  feature_cols:
+    - 'SEX'
+    - 'AGE'
+    - 'Height'
+    - 'Weight'
+    - 'BMI'
+    - 'PSQI'
+    - 'BDIII'
+    - 'ISI'
+    - 'ESS'
+    - 'SSS'
+    - 'STOPBANG'
+    - 'BQ'
+    - 'HTN'
+    - 'DM'
+    - 'DL'
+    - 'Liver'
+    - 'Kidney'
+    - 'Lung'
+    - 'IHD'
+    - 'CHF'
+    - 'Arrythmia'
+    - 'Cancer'
+    - 'Thyroid'
+    - 'Rhinitis'
+    - 'CTD'
+    - 'Epilepsy'
+    - 'CVA'
+    - 'Dementia'
+    - 'PSY'
+    - 'OSA_op'
+    - 'REM_Episodes'
+    - 'TST'
+    - 'Total_Stage_N1_ratio'
+    - 'Total_Stage_N2_ratio'
+    - 'Total_Stage_N3_ratio'
+    - 'Total_Stage_R_ratio'
+    - 'WASO'
+    - 'Sleep_latency'
+    - 'REM_sleep_latency'
+    - 'Sleep_Efficiency'
+    - 'Arousal_index'
+    - 'AHI'
+    - 'O2_satu_nadir'
+    - 'snoring_index'
+    - 'PLMs_index'
+    - 'PLMar_index'
+    - 'AHI_supine'
+    - 'AHI_REM'
+    - 'Apnea_NREM_avg'
+    - 'Apnea_REM_avg'
+    - 'Hypopnea_NREM_avg'
+    - 'Hypopnea_REM_avg'
+    - 'No_of_desatu'
+    - 'Min_O2_NREM'
+    - 'Min_O2_REM'
+    - 'HRV_NREM'
+    - 'HRV_REM'
+    - 'CCI'
+
+inference:
+  model_weights_path: "/path/to/best_model_label_adherence_1yr_fold_0.pt"
+  output_path: "predictions/results.csv"
+  threshold: 0.5
+  batch_size: 32
+
+model:
+  doc_input_dim: 128
+  doc_embed_dim: 128
+  doc_num_heads: 8
+  d_model: 256
+  num_heads: 4
+  dropout: 0.2

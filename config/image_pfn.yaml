@@ -1,0 +1,34 @@
+﻿# Config for Image-Only PFN (In-Context Decoder)
+model_type: "image_pfn"
+device: "cuda"
+
+data:
+  csv_path: "/home/won_ju_kim/yhchoi/PSG_260408/final_combined_data.csv"
+  patient_id_col: "ID"
+  labels:
+    - "adherence_3m"
+    - "adherence_6m"
+    - "adherence_9m"
+    - "adherence_1yr"
+    - "adherence_2yr"
+    - "adherence_3yr"
+    - "adherence_4yr"
+    - "adherence_5yr"
+  condition_ons: null
+
+training:
+  epochs: 100
+  steps_per_epoch: 25
+  patience: 15
+  lr: 0.0001
+  weight_decay: 0.001
+  model_save_dir: "/home/won_ju_kim/yhchoi/PSG_260408/pfn_exp_pt_260521/image_pfn"
+  log_save_path: "/home/won_ju_kim/yhchoi/PSG_260408/pfn_exp_pt_260521/image_pfn/logs/results.csv"
+  k_folds: 5
+
+model:
+  doc_input_dim: 128
+  embed_dim: 128
+  num_heads: 8
+  num_layers: 2
+  dropout: 0.2

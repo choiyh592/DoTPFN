@@ -1,0 +1,98 @@
+﻿# Config for Multimodal Training (DoTPFN)
+model_type: "multimodal"
+device: "cuda"
+
+data:
+  csv_path: "/home/won_ju_kim/yhchoi/PSG_260408/final_combined_data.csv"
+  patient_id_col: "ID"
+  labels:
+    - "adherence_3m"
+    - "adherence_6m"
+    - "adherence_9m"
+    - "adherence_1yr"
+    - "adherence_2yr"
+    - "adherence_3yr"
+    - "adherence_4yr"
+    - "adherence_5yr"
+  condition_ons: null
+  feature_cols:
+    - 'SEX'
+    - 'AGE'
+    - 'Height'
+    - 'Weight'
+    - 'BMI'
+    - 'PSQI'
+    - 'BDIII'
+    - 'ISI'
+    - 'ESS'
+    - 'SSS'
+    - 'STOPBANG'
+    - 'BQ'
+    - 'HTN'
+    - 'DM'
+    - 'DL'
+    - 'Liver'
+    - 'Kidney'
+    - 'Lung'
+    - 'IHD'
+    - 'CHF'
+    - 'Arrythmia'
+    - 'Cancer'
+    - 'Thyroid'
+    - 'Rhinitis'
+    - 'CTD'
+    - 'Epilepsy'
+    - 'CVA'
+    - 'Dementia'
+    - 'PSY'
+    - 'OSA_op'
+    - 'REM_Episodes'
+    - 'TST'
+    - 'Total_Stage_N1_ratio'
+    - 'Total_Stage_N2_ratio'
+    - 'Total_Stage_N3_ratio'
+    - 'Total_Stage_R_ratio'
+    - 'WASO'
+    - 'Sleep_latency'
+    - 'REM_sleep_latency'
+    - 'Sleep_Efficiency'
+    - 'Arousal_index'
+    - 'AHI'
+    - 'O2_satu_nadir'
+    - 'snoring_index'
+    - 'PLMs_index'
+    - 'PLMar_index'
+    - 'AHI_supine'
+    - 'AHI_REM'
+    - 'Apnea_NREM_avg'
+    - 'Apnea_REM_avg'
+    - 'Hypopnea_NREM_avg'
+    - 'Hypopnea_REM_avg'
+    - 'No_of_desatu'
+    - 'Min_O2_NREM'
+    - 'Min_O2_REM'
+    - 'HRV_NREM'
+    - 'HRV_REM'
+    - 'CCI'
+
+training:
+  epochs: 100
+  steps_per_epoch: 25
+  patience: 15
+  lr: 0.0001
+  weight_decay: 0.001
+  model_save_dir: "/home/won_ju_kim/yhchoi/PSG_260408/pfn_exp_pt_260521"
+  log_save_path: "/home/won_ju_kim/yhchoi/PSG_260408/pfn_exp_pt_260521/logs/results.csv"
+  k_folds: 5
+  
+  # For regularized pretraining alignment (MSE on Cross-Attention weights)
+  pretrained_image_dir: null 
+  lambda_reg: 0.75
+
+model:
+  doc_input_dim: 128
+  doc_embed_dim: 128
+  doc_num_heads: 8
+  d_model: 256
+  num_heads: 4
+  dropout: 0.2

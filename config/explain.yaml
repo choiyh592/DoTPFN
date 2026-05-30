@@ -1,0 +1,80 @@
+﻿# Config for DoTPFN Hierarchical Saliency Saliency Maps
+device: "cuda"
+
+data:
+  csv_path: "/home/won_ju_kim/yhchoi/PSG_260408/final_combined_data.csv"
+  patient_id_col: "ID"
+  image_dir: "/home/won_ju_kim/yhchoi/PSG_260408/PSG_Lastpage_Images_HypnogramMatch"
+  feature_cols:
+    - 'SEX'
+    - 'AGE'
+    - 'Height'
+    - 'Weight'
+    - 'BMI'
+    - 'PSQI'
+    - 'BDIII'
+    - 'ISI'
+    - 'ESS'
+    - 'SSS'
+    - 'STOPBANG'
+    - 'BQ'
+    - 'HTN'
+    - 'DM'
+    - 'DL'
+    - 'Liver'
+    - 'Kidney'
+    - 'Lung'
+    - 'IHD'
+    - 'CHF'
+    - 'Arrythmia'
+    - 'Cancer'
+    - 'Thyroid'
+    - 'Rhinitis'
+    - 'CTD'
+    - 'Epilepsy'
+    - 'CVA'
+    - 'Dementia'
+    - 'PSY'
+    - 'OSA_op'
+    - 'REM_Episodes'
+    - 'TST'
+    - 'Total_Stage_N1_ratio'
+    - 'Total_Stage_N2_ratio'
+    - 'Total_Stage_N3_ratio'
+    - 'Total_Stage_R_ratio'
+    - 'WASO'
+    - 'Sleep_latency'
+    - 'REM_sleep_latency'
+    - 'Sleep_Efficiency'
+    - 'Arousal_index'
+    - 'AHI'
+    - 'O2_satu_nadir'
+    - 'snoring_index'
+    - 'PLMs_index'
+    - 'PLMar_index'
+    - 'AHI_supine'
+    - 'AHI_REM'
+    - 'Apnea_NREM_avg'
+    - 'Apnea_REM_avg'
+    - 'Hypopnea_NREM_avg'
+    - 'Hypopnea_REM_avg'
+    - 'No_of_desatu'
+    - 'Min_O2_NREM'
+    - 'Min_O2_REM'
+    - 'HRV_NREM'
+    - 'HRV_REM'
+    - 'CCI'
+
+explanation:
+  target_label: "adherence_5yr"
+  condition_on: null
+  fold: 1
+  patient_idx: 8
+  model_save_dir: "/home/won_ju_kim/yhchoi/PSG_260408/pfn_exp_pt_260521"
+  output_dir: "./explanations"
+  colqwen_model_path: "vidore/colqwen2-v0.1"
+
+model:
+  doc_input_dim: 128
+  d_model: 256
+  num_heads: 4
