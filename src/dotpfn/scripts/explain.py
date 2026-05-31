@@ -33,27 +33,7 @@ warnings.filterwarnings('ignore')
 logger = setup_logger("DoTPFN.Explain")
 
 # Dyn-imports helper
-def get_tabpfn_classes():
-    try:
-        from tabpfn_extensions import TabPFNClassifier
-        from tabpfn_extensions.embedding import TabPFNEmbedding
-        return TabPFNClassifier, TabPFNEmbedding
-    except ImportError:
-        try:
-            from tabpfn import TabPFNClassifier
-            from tabpfn.embedding import TabPFNEmbedding
-            return TabPFNClassifier, TabPFNEmbedding
-        except ImportError:
-            logger.warning("Neither tabpfn_extensions nor tabpfn could be imported. Explainer running on mock embeddings.")
-            class DummyTabPFNClassifier:
-                def __init__(self, n_estimators=1, device="cpu"): pass
-                def fit(self, X, y): pass
-            class DummyTabPFNEmbedding:
-                def __init__(self, tabpfn_clf, n_fold=5): pass
-                def fit(self, X, y): pass
-                def get_embeddings(self, X_train, y_train, X_val, data_source="train"):
-                    return np.zeros((1, len(X_val), 256), dtype=np.float32)
-            return DummyTabPFNClassifier, DummyTabPFNEmbedding
+from dotpfn.utils.tabpfn_loader import get_tabpfn_classes
 
 
 # =====================================================================

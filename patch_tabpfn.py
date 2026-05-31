@@ -1,4 +1,26 @@
-import logging
+﻿import os
+import re
+
+# 1. Fix explain.py removing the old get_tabpfn_classes
+explain_path = 'src/dotpfn/scripts/explain.py'
+with open(explain_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+pattern = re.compile(r'def get_tabpfn_classes\(\):.*?return DummyTabPFNClassifier, DummyTabPFNEmbedding\n', re.DOTALL)
+if 'from dotpfn.utils.tabpfn_loader import get_tabpfn_classes' not in content:
+    content = pattern.sub('from dotpfn.utils.tabpfn_loader import get_tabpfn_classes\n', content)
+else:
+    content = pattern.sub('', content)
+
+with open(explain_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+# 2. Update tabpfn_loader.py to support TabPFN v2.6
+loader_path = 'src/dotpfn/utils/tabpfn_loader.py'
+with open(loader_path, 'r', encoding='utf-8') as f:
+    loader_content = f.read()
+
+new_loader = '''import logging
 import numpy as np
 
 logger = logging.getLogger("DoTPFN.TabPFN")
@@ -109,3 +131,7 @@ def _make_dummy_classes():
             X_out[0, :, :n_features] = X_in[:, :n_features]
             return X_out
     return DummyTabPFNClassifier, DummyTabPFNEmbedding
+'''
+with open(loader_path, 'w', encoding='utf-8') as f:
+    f.write(new_loader)
+print("Updated explain.py and tabpfn_loader.py")
