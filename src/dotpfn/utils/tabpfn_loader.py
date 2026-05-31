@@ -82,6 +82,17 @@ def _try_load_backend(backend_name):
             logger.info(f"Backend \'{backend_name}\' has no native embedding API. Using predict_proba fallback.")
             TabPFNEmbedding = _make_v1_embedding_wrapper(TabPFNClassifier)
 
+        # Log installed package versions for debugging
+        try:
+            import importlib.metadata as meta
+            for pkg in ["tabpfn", "tabpfn-extensions", "tabpfn_extensions"]:
+                try:
+                    ver = meta.version(pkg)
+                    logger.info(f"  Installed: {pkg}=={ver}")
+                except meta.PackageNotFoundError:
+                    pass
+        except ImportError:
+            pass
         logger.info(f"Loaded TabPFN backend: {backend['description']}")
         return TabPFNClassifier, TabPFNEmbedding
     except Exception as e:

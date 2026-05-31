@@ -71,11 +71,11 @@ class ClinicalMultimodalPipeline:
         train_tab_emb = torch.tensor(train_tab_emb, dtype=torch.float32)
         val_tab_emb = torch.tensor(val_tab_emb, dtype=torch.float32)
         
-        # Squeeze dim-3 batches
+        # Squeeze dim-3 batches (Handle out-of-fold embeddings or dummy batch)
         if train_tab_emb.dim() == 3:
-            train_tab_emb = train_tab_emb.squeeze(0) if train_tab_emb.size(0) == 1 else train_tab_emb.squeeze(1)
+            train_tab_emb = train_tab_emb.mean(dim=0)
         if val_tab_emb.dim() == 3:
-            val_tab_emb = val_tab_emb.squeeze(0) if val_tab_emb.size(0) == 1 else val_tab_emb.squeeze(1)
+            val_tab_emb = val_tab_emb.mean(dim=0)
             
         # 2. Preload Document Embeddings
         train_doc_embs = load_all_document_embeddings(train_df)
@@ -84,7 +84,7 @@ class ClinicalMultimodalPipeline:
         train_y = torch.tensor(y_train, dtype=torch.float32)
         val_y = torch.tensor(y_val, dtype=torch.float32)
         
-        tab_dim = train_tab_emb.shape[1]
+        tab_dim = train_tab_emb.shape[-1]
         doc_dim = train_doc_embs.size(-1)
         
         # 3. Model construction

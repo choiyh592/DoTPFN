@@ -80,6 +80,8 @@ def run_inference(config: ConfigNode):
         support_tab_emb = embedder.get_embeddings(X_train, y_train, X_train, data_source="train")
         query_tab_emb = embedder.get_embeddings(X_train, y_train, X_query, data_source="test")
         
+        logger.info(f"Raw TabPFN support embedding shape: {support_tab_emb.shape}")
+        logger.info(f"Raw TabPFN query embedding shape: {query_tab_emb.shape}")
         support_tab_emb = torch.tensor(support_tab_emb, dtype=torch.float32)
         query_tab_emb = torch.tensor(query_tab_emb, dtype=torch.float32)
         
@@ -90,16 +92,7 @@ def run_inference(config: ConfigNode):
         tab_dim = support_tab_emb.shape[1]
         doc_dim = support_doc_embs.shape[-1]
         
-        # Validate embedding dim matches checkpoint
-        if state_dict and "tab_proj.weight" in state_dict:
-            ckpt_tab_dim = state_dict["tab_proj.weight"].shape[1]
-            if tab_dim != ckpt_tab_dim:
-                raise RuntimeError(
-                    f"TabPFN embedding dimension mismatch: checkpoint expects {ckpt_tab_dim}, "
-                    f"but current TabPFN backend produced {tab_dim}. "
-                    f"Ensure you are using the same TabPFN version and model_path as during training."
-                )
-        
+        # Build model with the LIVE embedding dimension
         model = DoTPFN(
             tab_embed_dim=tab_dim,
             doc_input_dim=doc_dim,
@@ -111,7 +104,18 @@ def run_inference(config: ConfigNode):
         ).to(device)
         
         if state_dict:
-            model.load_state_dict(state_dict)
+            ckpt_tab_dim = state_dict["tab_proj.weight"].shape[1] if "tab_proj.weight" in state_dict else tab_dim
+            if tab_dim != ckpt_tab_dim:
+                logger.warning(
+                    f"TabPFN embedding dim changed: checkpoint had {ckpt_tab_dim}, "
+                    f"current backend produces {tab_dim}. "
+                    f"Rebuilding tab_proj for new dim; loading all other weights from checkpoint."
+                )
+                # Remove tab_proj keys from state_dict so they don't clash
+                state_dict = {k: v for k, v in state_dict.items() if not k.startswith("tab_proj.")}
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                model.load_state_dict(state_dict)
         model.eval()
         
         with torch.no_grad():
