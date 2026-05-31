@@ -13,7 +13,7 @@ TABPFN_BACKENDS = {
     "tabpfn": {
         "description": "TabPFN v2.6+ (PriorLabs standard package)",
         "classifier_import": ("tabpfn", "TabPFNClassifier"),
-        "embedding_import": ("tabpfn.embedding", "TabPFNEmbedding"),
+        "embedding_import": None,  # V2.6+ might not have an embedding API exposed
     },
     "tabpfn_v1": {
         "description": "TabPFN v1 (original Hollmann et al. 2022)",
@@ -73,7 +73,7 @@ def _try_load_backend(backend_name):
         logger.info(f"Loaded TabPFN backend: {backend['description']}")
         return TabPFNClassifier, TabPFNEmbedding
     except (ImportError, AttributeError) as e:
-        logger.debug(f"Could not load backend '{backend_name}': {e}")
+        logger.error(f"Could not load backend '{backend_name}': {e}")
         return None
 
 def _make_v1_embedding_wrapper(TabPFNClassifier):
