@@ -8,6 +8,7 @@ from dotpfn.data.dataset import load_all_document_embeddings
 from dotpfn.models.fusion import DoTPFN
 from dotpfn.models.classifiers import AttentionClassifier, ImageOnlyInContextDecoder
 from dotpfn.utils.tabpfn_loader import get_tabpfn_classes
+from dotpfn.utils.metrics import compute_metrics
 
 logger = setup_logger("DoTPFN.Infer")
 
@@ -20,8 +21,18 @@ def run_inference(config: ConfigNode):
     # Load query set (the new patients to predict on)
     logger.info(f"Loading query CSV from {config.data.query_csv_path}")
     query_df = pd.read_csv(config.data.query_csv_path)
+    
+    # Filter query_df for labels as in the training script
+    if config.data.target_label in query_df.columns:
+        query_df = query_df.dropna(subset=[config.data.target_label]).copy()
+        query_df = query_df[query_df[config.data.target_label].isin([0, 1])].reset_index(drop=True)
+        
+    condition_on = getattr(config.data, 'condition_on', None)
+    if condition_on is not None and condition_on in query_df.columns:
+        query_df = query_df[query_df[condition_on] == 1].reset_index(drop=True)
+
     if len(query_df) == 0:
-        logger.error("Query CSV is empty!")
+        logger.error("Query CSV is empty after filtering!")
         return
         
     query_doc_embs = load_all_document_embeddings(query_df)
@@ -32,6 +43,9 @@ def run_inference(config: ConfigNode):
         support_df = pd.read_csv(config.data.support_csv_path)
         support_df = support_df.dropna(subset=[config.data.target_label])
         support_df = support_df[support_df[config.data.target_label].isin([0, 1])].reset_index(drop=True)
+        
+        if condition_on is not None and condition_on in support_df.columns:
+            support_df = support_df[support_df[condition_on] == 1].reset_index(drop=True)
         
         support_doc_embs = load_all_document_embeddings(support_df)
         support_y = torch.tensor(support_df[config.data.target_label].values, dtype=torch.float32)
@@ -144,6 +158,24 @@ def run_inference(config: ConfigNode):
     query_df["probability"] = probs
     query_df["prediction"] = (query_df["probability"] >= getattr(config.inference, "threshold", 0.5)).astype(int)
     
+    # Calculate metrics if ground truth is available
+    if config.data.target_label in query_df.columns:
+        y_true = query_df[config.data.target_label].values
+        # Filter out NaNs if any
+        valid_idx = ~np.isnan(y_true)
+        if valid_idx.sum() > 0:
+            metrics = compute_metrics(y_true[valid_idx], probs[valid_idx])
+            logger.info("=========================================")
+            logger.info("INFERENCE METRICS")
+            logger.info("=========================================")
+            for k, v in metrics.items():
+                logger.info(f"{k}: {v:.4f}")
+            logger.info("=========================================")
+        else:
+            logger.warning("Target label column exists but contains only NaNs.")
+    else:
+        logger.info(f"Target label '{config.data.target_label}' not found in query CSV. Skipping metrics calculation.")
+
     out_path = config.inference.output_path
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     
