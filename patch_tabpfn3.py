@@ -1,4 +1,7 @@
-import logging
+﻿import os
+
+loader_path = 'src/dotpfn/utils/tabpfn_loader.py'
+new_loader = '''import logging
 import numpy as np
 
 logger = logging.getLogger("DoTPFN.TabPFN")
@@ -103,3 +106,7 @@ def _make_dummy_classes():
             X_out[0, :, :n_features] = X_in[:, :n_features]
             return X_out
     return DummyTabPFNClassifier, DummyTabPFNEmbedding
+'''
+with open(loader_path, 'w', encoding='utf-8') as f:
+    f.write(new_loader)
+print("Updated tabpfn_loader.py")
