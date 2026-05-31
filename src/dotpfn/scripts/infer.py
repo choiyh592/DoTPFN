@@ -86,10 +86,11 @@ def run_inference(config: ConfigNode):
         query_tab_emb = torch.tensor(query_tab_emb, dtype=torch.float32)
         
         if support_tab_emb.dim() == 3:
-            support_tab_emb = support_tab_emb.squeeze(0) if support_tab_emb.size(0) == 1 else support_tab_emb.squeeze(1)
-            query_tab_emb = query_tab_emb.squeeze(0) if query_tab_emb.size(0) == 1 else query_tab_emb.squeeze(1)
+            support_tab_emb = support_tab_emb.mean(dim=0)
+        if query_tab_emb.dim() == 3:
+            query_tab_emb = query_tab_emb.mean(dim=0)
 
-        tab_dim = support_tab_emb.shape[1]
+        tab_dim = support_tab_emb.shape[-1]
         doc_dim = support_doc_embs.shape[-1]
         
         # Build model with the LIVE embedding dimension
