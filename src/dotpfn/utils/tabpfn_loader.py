@@ -3,26 +3,34 @@ import numpy as np
 
 logger = logging.getLogger("DoTPFN.TabPFN")
 
-# Registry of supported TabPFN backends
 TABPFN_BACKENDS = {
     "tabpfn_extensions": {
-        "description": "TabPFN Extensions (PriorLabs extended API with embeddings)",
+        "description": "TabPFN Extensions (tabpfn_extensions.TabPFNClassifier + TabPFNEmbedding)",
         "classifier_import": ("tabpfn_extensions", "TabPFNClassifier"),
         "embedding_import": ("tabpfn_extensions.embedding", "TabPFNEmbedding"),
     },
     "tabpfn": {
-        "description": "TabPFN v2.6+ (PriorLabs standard package) with tabpfn-extensions embedding extractor",
+        "description": "TabPFN base package (tabpfn.TabPFNClassifier + tabpfn_extensions.embedding)",
         "classifier_import": ("tabpfn", "TabPFNClassifier"),
-        "embedding_import": ("tabpfn_extensions.embedding", "TabPFNEmbedding"), # Uses extension for embeddings!
+        "embedding_import": ("tabpfn_extensions.embedding", "TabPFNEmbedding"),
     },
     "tabpfn_v1": {
-        "description": "TabPFN v1 (original Hollmann et al. 2022)",
+        "description": "TabPFN v1 (original Hollmann et al. 2022, no native embedding API)",
         "classifier_import": ("tabpfn", "TabPFNClassifier"),
-        "embedding_import": None,  # v1 has no embedding API
+        "embedding_import": None,
     },
 }
 
 def get_tabpfn_classes(version="auto"):
+    """Dynamically load TabPFN classifier and embedding classes.
+
+    Args:
+        version: Which TabPFN backend to use.
+            - "auto": Try tabpfn_extensions -> tabpfn -> dummy fallback
+            - "tabpfn_extensions": Use tabpfn_extensions.TabPFNClassifier (default for tabpfn<=7.x)
+            - "tabpfn": Use tabpfn.TabPFNClassifier with V2.6 factory if available (tabpfn>=8.x)
+            - "tabpfn_v1": Original TabPFN v1 (predict_proba-based embedding fallback)
+    """
     if version == "auto":
         for backend_name in ["tabpfn_extensions", "tabpfn"]:
             result = _try_load_backend(backend_name)
@@ -32,13 +40,13 @@ def get_tabpfn_classes(version="auto"):
         return _make_dummy_classes()
 
     if version not in TABPFN_BACKENDS:
-        raise ValueError(f"Unknown TabPFN version '{version}'. Supported: {list(TABPFN_BACKENDS.keys()) + ['auto']}")
+        raise ValueError(f"Unknown TabPFN version \'{version}\'. Supported: {list(TABPFN_BACKENDS.keys()) + ['auto']}")
 
     result = _try_load_backend(version)
     if result is not None:
         return result
 
-    raise ImportError(f"TabPFN backend '{version}' could not be imported.")
+    raise ImportError(f"TabPFN backend \'{version}\' could not be imported.")
 
 def _try_load_backend(backend_name):
     backend = TABPFN_BACKENDS[backend_name]
@@ -47,15 +55,23 @@ def _try_load_backend(backend_name):
         clf_module = importlib.import_module(backend["classifier_import"][0])
         RawTabPFNClassifier = getattr(clf_module, backend["classifier_import"][1])
 
-        # Support the new TabPFN v2.6+ factory initialization seamlessly
+        # For the "tabpfn" backend (base package), try the V2.6+ factory API
+        # (available in tabpfn>=8.0). If it does not exist (tabpfn<=7.x),
+        # fall back to using the constructor directly (V2.6 is already the default).
         if backend_name == "tabpfn":
-            from tabpfn.constants import ModelVersion
-            class V26Factory:
-                def __new__(cls, n_estimators=1, device="cpu", model_path=None, **kwargs):
-                    if model_path:
-                        return RawTabPFNClassifier(n_estimators=n_estimators, device=device, model_path=model_path)
-                    return RawTabPFNClassifier.create_default_for_version(ModelVersion.V2_6, device=device)
-            TabPFNClassifier = V26Factory
+            try:
+                from tabpfn.constants import ModelVersion
+                class V26Factory:
+                    def __new__(cls, n_estimators=1, device="cpu", model_path=None, **kwargs):
+                        if model_path:
+                            return RawTabPFNClassifier(n_estimators=n_estimators, device=device, model_path=model_path)
+                        return RawTabPFNClassifier.create_default_for_version(ModelVersion.V2_6, device=device)
+                TabPFNClassifier = V26Factory
+                logger.info("Using TabPFN V2.6 factory API (tabpfn>=8.0)")
+            except (ImportError, AttributeError):
+                # tabpfn<=7.x: V2.6 is already the default, just use constructor directly
+                TabPFNClassifier = RawTabPFNClassifier
+                logger.info("Using TabPFN default constructor (tabpfn<=7.x, default=V2.6)")
         else:
             TabPFNClassifier = RawTabPFNClassifier
 
@@ -63,13 +79,13 @@ def _try_load_backend(backend_name):
             emb_module = importlib.import_module(backend["embedding_import"][0])
             TabPFNEmbedding = getattr(emb_module, backend["embedding_import"][1])
         else:
-            logger.info(f"Backend '{backend_name}' has no native embedding API. Using predict_proba fallback.")
+            logger.info(f"Backend \'{backend_name}\' has no native embedding API. Using predict_proba fallback.")
             TabPFNEmbedding = _make_v1_embedding_wrapper(TabPFNClassifier)
 
         logger.info(f"Loaded TabPFN backend: {backend['description']}")
         return TabPFNClassifier, TabPFNEmbedding
     except Exception as e:
-        logger.error(f"Could not load backend '{backend_name}': {type(e).__name__} - {e}")
+        logger.error(f"Could not load backend \'{backend_name}\': {type(e).__name__} - {e}")
         return None
 
 def _make_v1_embedding_wrapper(TabPFNClassifier):
@@ -90,7 +106,7 @@ def _make_v1_embedding_wrapper(TabPFNClassifier):
 
 def _make_dummy_classes():
     class DummyTabPFNClassifier:
-        def __init__(self, n_estimators=1, device="cpu"): pass
+        def __init__(self, n_estimators=1, device="cpu", **kwargs): pass
         def fit(self, X, y): pass
         def predict_proba(self, X): return np.zeros((len(X), 2), dtype=np.float32)
 
