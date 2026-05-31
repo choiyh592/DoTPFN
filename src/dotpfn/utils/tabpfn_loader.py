@@ -47,11 +47,13 @@ def _try_load_backend(backend_name):
         clf_module = importlib.import_module(backend["classifier_import"][0])
         RawTabPFNClassifier = getattr(clf_module, backend["classifier_import"][1])
 
-        # Support the new TabPFN v2.6+ factory initialization seamlessly via __new__
+        # Support the new TabPFN v2.6+ factory initialization seamlessly
         if backend_name == "tabpfn":
             from tabpfn.constants import ModelVersion
-            class V26Factory(RawTabPFNClassifier):
-                def __new__(cls, n_estimators=1, device="cpu", **kwargs):
+            class V26Factory:
+                def __new__(cls, n_estimators=1, device="cpu", model_path=None, **kwargs):
+                    if model_path:
+                        return RawTabPFNClassifier(n_estimators=n_estimators, device=device, model_path=model_path)
                     return RawTabPFNClassifier.create_default_for_version(ModelVersion.V2_6, device=device)
             TabPFNClassifier = V26Factory
         else:

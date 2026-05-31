@@ -29,11 +29,15 @@ class ClinicalMultimodalPipeline:
         self.model_save_dir = config.training.model_save_dir
         os.makedirs(self.model_save_dir, exist_ok=True)
         
-        self.TabPFNClassifier, self.TabPFNEmbedding = get_tabpfn_classes()
+        tabpfn_version = getattr(config.tabpfn, "version", "auto") if hasattr(config, "tabpfn") else "auto"
+        self.TabPFNClassifier, self.TabPFNEmbedding = get_tabpfn_classes(version=tabpfn_version)
 
     def extract_tabpfn_embeddings(self, X_train, y_train, X_val):
         logger.info(f"    -> Fitting TabPFN Prior on {len(X_train)} samples...")
-        clf = self.TabPFNClassifier(n_estimators=1, device=self.device)
+        tabpfn_kwargs = {"n_estimators": 1, "device": self.device}
+        if hasattr(self.config, "tabpfn") and hasattr(self.config.tabpfn, "model_path"):
+            tabpfn_kwargs["model_path"] = self.config.tabpfn.model_path
+        clf = self.TabPFNClassifier(**tabpfn_kwargs)
         clf.fit(X_train, y_train)
         
         embedder = self.TabPFNEmbedding(tabpfn_clf=clf, n_fold=5)
@@ -177,8 +181,10 @@ class ClinicalMultimodalPipeline:
                     break
                     
         if best_weights:
+            # Clean up checkpoint: drop frozen anchor submodule before saving weights
+            clean_weights = {k: v for k, v in best_weights.items() if not k.startswith('frozen_doc_pooler.')}
             model.load_state_dict(best_weights)
-            torch.save(best_weights, f"{self.model_save_dir}/best_{save_name}_fold_{fold}.pt")
+            torch.save(clean_weights, f"{self.model_save_dir}/best_{save_name}_fold_{fold}.pt")
             
         return self.evaluate_model(
             model, train_tab_emb, train_doc_embs, train_y, 
@@ -356,16 +362,17 @@ def run_training(config: ConfigNode):
     patient_id_col = getattr(config.data, 'patient_id_col', None)
 
     for i, label in enumerate(config.data.labels):
-        # Filtering label NaNs
         sub_df = df.dropna(subset=[label]).copy()
-        sub_df = sub_df[sub_df[label].isin([0, 1])].reset_index(drop=True)
-        
-        # Conditional label stratification
+
+        # Conditional label stratification (applied BEFORE binary filter, matching original)
         if condition_ons is not None and condition_ons[i] is not None:
             save_name = f"{label}_cond_on_{condition_ons[i]}"
             sub_df = sub_df[sub_df[condition_ons[i]] == 1].reset_index(drop=True)
         else:
             save_name = label
+
+        # Binary label filter
+        sub_df = sub_df[sub_df[label].isin([0, 1])].reset_index(drop=True)
 
         logger.info(f"\n>>> Starting 5-Fold CV for Label: {save_name} (N={len(sub_df)})")
         

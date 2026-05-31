@@ -68,7 +68,10 @@ def run_inference(config: ConfigNode):
         TabPFNClassifier, TabPFNEmbedding = get_tabpfn_classes(version=tabpfn_version)
         
         logger.info("Extracting TabPFN embeddings...")
-        clf = TabPFNClassifier(n_estimators=getattr(config.tabpfn, "n_estimators", 1), device=device)
+        tabpfn_kwargs = {"n_estimators": getattr(config.tabpfn, "n_estimators", 1), "device": device}
+        if hasattr(config.tabpfn, "model_path"):
+            tabpfn_kwargs["model_path"] = config.tabpfn.model_path
+        clf = TabPFNClassifier(**tabpfn_kwargs)
         clf.fit(X_train, y_train)
         
         embedder = TabPFNEmbedding(tabpfn_clf=clf, n_fold=5)
@@ -86,6 +89,16 @@ def run_inference(config: ConfigNode):
 
         tab_dim = support_tab_emb.shape[1]
         doc_dim = support_doc_embs.shape[-1]
+        
+        # Validate embedding dim matches checkpoint
+        if state_dict and "tab_proj.weight" in state_dict:
+            ckpt_tab_dim = state_dict["tab_proj.weight"].shape[1]
+            if tab_dim != ckpt_tab_dim:
+                raise RuntimeError(
+                    f"TabPFN embedding dimension mismatch: checkpoint expects {ckpt_tab_dim}, "
+                    f"but current TabPFN backend produced {tab_dim}. "
+                    f"Ensure you are using the same TabPFN version and model_path as during training."
+                )
         
         model = DoTPFN(
             tab_embed_dim=tab_dim,

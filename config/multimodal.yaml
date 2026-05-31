@@ -2,6 +2,11 @@
 model_type: "multimodal"
 device: "cuda"
 
+tabpfn:
+  version: "tabpfn"  # "auto", "tabpfn_extensions", "tabpfn", "tabpfn_v1"
+  n_estimators: 1
+  # model_path: "tabpfn-v3-classifier-v3_20260417_binary.ckpt"  # Optional: specify a custom checkpoint
+
 data:
   csv_path: "/home/won_ju_kim/yhchoi/PSG_260408/final_combined_data.csv"
   patient_id_col: "ID"
